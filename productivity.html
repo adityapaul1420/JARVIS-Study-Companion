@@ -1,0 +1,1246 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>JARVIS — Study Companion HUD</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #070c14;
+    --bg2: #0d1626;
+    --panel: #0f1a2c;
+    --line: rgba(96, 214, 230, 0.18);
+    --line-glow: rgba(96, 214, 230, 0.4);
+    --cyan: #5fd6e6;
+    --cyan-dim: rgba(95, 214, 230, 0.35);
+    --gold: #ffb454;
+    --text: #dce8ef;
+    --dim: #8296a8;
+    --danger: #ff6b6b;
+    --good: #7ee8a0;
+  }
+
+  * { box-sizing: border-box; }
+  html, body { height: 100%; margin: 0; }
+  
+  body {
+    background:
+      radial-gradient(circle at 20% -10%, rgba(95, 214, 230, 0.08), transparent 45%),
+      radial-gradient(circle at 100% 110%, rgba(255, 180, 84, 0.06), transparent 40%),
+      var(--bg);
+    color: var(--text);
+    font-family: 'Inter', sans-serif;
+    min-height: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    overflow-x: hidden;
+  }
+
+  h1, h2, h3, .mono { font-family: 'Space Grotesk', sans-serif; }
+
+  .grid-overlay {
+    position: fixed; inset: 0; pointer-events: none; opacity: .35;
+    background-image: linear-gradient(var(--line) 1px, transparent 1px), linear-gradient(90deg, var(--line) 1px, transparent 1px);
+    background-size: 42px 42px;
+    mask-image: radial-gradient(circle at 50% 20%, black, transparent 75%);
+  }
+
+  .wrap {
+    width: 100%;
+    max-width: 760px;
+    padding: 32px 20px 60px;
+    position: relative;
+    z-index: 1;
+  }
+
+  .top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 24px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid var(--line);
+  }
+
+  .brand {
+    font-size: 13.5px;
+    letter-spacing: .14em;
+    color: var(--cyan);
+    font-family: 'Space Grotesk', sans-serif;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .brand b { color: var(--text); font-weight: 600; }
+  
+  .notch-dock-badge {
+    font-size: 10px;
+    padding: 2px 7px;
+    border-radius: 20px;
+    background: rgba(95, 214, 230, 0.12);
+    border: 1px solid var(--line);
+    color: var(--cyan);
+  }
+
+  .top-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .icon-btn {
+    background: var(--bg2);
+    border: 1px solid var(--line);
+    color: var(--dim);
+    width: 34px;
+    height: 34px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 15px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+  }
+
+  .icon-btn:hover {
+    color: var(--cyan);
+    border-color: var(--cyan-dim);
+    transform: scale(1.05);
+  }
+
+  /* Companion Header */
+  .companion {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin-bottom: 24px;
+  }
+
+  .orb-wrap {
+    position: relative;
+    width: 100px;
+    height: 100px;
+  }
+
+  .ring {
+    position: absolute; inset: 0; border-radius: 50%;
+    border: 1px solid var(--line);
+    animation: spin 18s linear infinite;
+  }
+
+  .ring2 {
+    position: absolute; inset: 8px; border-radius: 50%;
+    border: 1px dashed var(--cyan-dim);
+    animation: spin 26s linear infinite reverse;
+  }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  #orb {
+    position: absolute; inset: 18px; border-radius: 50%;
+    background: radial-gradient(circle at 35% 30%, #bdf3fb, var(--cyan) 40%, #0e5d6a 100%);
+    box-shadow: 0 0 30px rgba(95, 214, 230, .45), 0 0 60px rgba(95, 214, 230, .15);
+    animation: breathe 3.6s ease-in-out infinite;
+    transition: background 0.4s ease, box-shadow 0.4s ease;
+  }
+
+  @keyframes breathe {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.06); }
+  }
+
+  #orb.sleep {
+    animation: none;
+    background: radial-gradient(circle at 35% 30%, #4a5a63, #24343b 50%, #101a1e 100%);
+    box-shadow: none;
+  }
+
+  #orb.focus {
+    animation: breathe 2.2s ease-in-out infinite;
+    box-shadow: 0 0 25px rgba(95, 214, 230, .65);
+  }
+
+  #orb.break {
+    background: radial-gradient(circle at 35% 30%, #e3fdf0, var(--good) 45%, #0f5c2b 100%);
+    box-shadow: 0 0 28px rgba(126, 232, 160, .6);
+  }
+
+  .eyes {
+    position: absolute; inset: 0;
+    display: flex; align-items: center; justify-content: center;
+    gap: 12px;
+  }
+
+  .eye {
+    width: 6px; height: 14px;
+    background: #05131a;
+    border-radius: 2px;
+    animation: blink 5s ease-in-out infinite;
+  }
+
+  .eye:nth-child(2) { animation-delay: .15s; }
+  #orb.sleep .eye { height: 2px; animation: none; }
+  #orb.break .eye { height: 6px; border-radius: 3px 3px 1px 1px; }
+
+  @keyframes blink {
+    0%, 92%, 100% { transform: scaleY(1); }
+    95% { transform: scaleY(.08); }
+  }
+
+  .say {
+    margin-top: 14px;
+    font-size: 14.5px;
+    text-align: center;
+    max-width: 440px;
+    color: var(--text);
+    min-height: 22px;
+  }
+
+  .say b { color: var(--cyan); font-weight: 600; }
+
+  /* Panels */
+  .panel {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 20px;
+    margin-bottom: 18px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.25);
+  }
+
+  .panel-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 14px;
+  }
+
+  .panel h2 {
+    font-size: 12px;
+    letter-spacing: .1em;
+    color: var(--dim);
+    margin: 0;
+    font-weight: 500;
+    text-transform: uppercase;
+  }
+
+  .mode-pill {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    padding: 3px 8px;
+    border-radius: 6px;
+    background: rgba(95, 214, 230, 0.12);
+    color: var(--cyan);
+    border: 1px solid rgba(95, 214, 230, 0.3);
+  }
+
+  .mode-pill.break {
+    background: rgba(126, 232, 160, 0.15);
+    color: var(--good);
+    border-color: rgba(126, 232, 160, 0.35);
+  }
+
+  .mission-name { font-size: 19px; font-weight: 600; }
+  .mission-sub { color: var(--dim); font-size: 13px; margin-top: 2px; }
+
+  .timer-row {
+    display: flex;
+    align-items: center;
+    gap: 22px;
+    margin-top: 16px;
+    flex-wrap: wrap;
+  }
+
+  .timer-ring {
+    position: relative;
+    width: 104px;
+    height: 104px;
+    flex: none;
+  }
+
+  .timer-ring svg {
+    width: 100%;
+    height: 100%;
+    transform: rotate(-90deg);
+  }
+
+  .timer-ring circle { fill: none; stroke-width: 6; }
+  .t-track { stroke: rgba(255, 255, 255, .06); }
+  .t-prog {
+    stroke: var(--cyan);
+    stroke-linecap: round;
+    transition: stroke-dashoffset 0.3s linear, stroke 0.3s ease;
+    filter: drop-shadow(0 0 6px var(--cyan));
+  }
+
+  .t-prog.break {
+    stroke: var(--good);
+    filter: drop-shadow(0 0 6px var(--good));
+  }
+
+  .timer-time {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'JetBrains Mono', 'Space Grotesk', monospace;
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--cyan);
+  }
+
+  .timer-time.break {
+    color: var(--good);
+  }
+
+  .timer-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    flex: 1;
+    min-width: 200px;
+  }
+
+  .presets {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+  }
+
+  .chip {
+    background: var(--bg2);
+    border: 1px solid var(--line);
+    color: var(--dim);
+    font-size: 12px;
+    font-weight: 500;
+    padding: 6px 12px;
+    border-radius: 20px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+
+  .chip.active, .chip:hover {
+    color: var(--cyan);
+    border-color: var(--cyan-dim);
+    background: rgba(95, 214, 230, 0.12);
+  }
+
+  .btn {
+    border: none;
+    border-radius: 9px;
+    padding: 9px 16px;
+    font-family: 'Space Grotesk', sans-serif;
+    font-weight: 600;
+    font-size: 13px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+
+  .btn-main {
+    background: var(--cyan);
+    color: #052229;
+    box-shadow: 0 0 12px rgba(95, 214, 230, 0.3);
+  }
+
+  .btn-main.break {
+    background: var(--good);
+    color: #042614;
+    box-shadow: 0 0 12px rgba(126, 232, 160, 0.4);
+  }
+
+  .btn-main:hover {
+    background: #7fe3f0;
+    box-shadow: 0 0 18px rgba(95, 214, 230, 0.5);
+  }
+
+  .btn-main.break:hover {
+    background: #99f0b5;
+  }
+
+  .btn-ghost {
+    background: transparent;
+    border: 1px solid var(--line);
+    color: var(--text);
+  }
+
+  .btn-ghost:hover {
+    border-color: var(--cyan-dim);
+    color: var(--cyan);
+  }
+
+  .btn:disabled {
+    opacity: .35;
+    cursor: not-allowed;
+  }
+
+  /* Tasks */
+  .task-add {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 14px;
+    flex-wrap: wrap;
+  }
+
+  .task-add input, .task-add select {
+    background: var(--bg2);
+    border: 1px solid var(--line);
+    color: var(--text);
+    border-radius: 8px;
+    padding: 9px 12px;
+    font-size: 13px;
+    font-family: inherit;
+  }
+
+  .task-add input[name=title] { flex: 2; min-width: 140px; }
+  .task-add input[name=mins] { width: 75px; }
+
+  .task-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .task {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: var(--bg2);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 10px 12px;
+    transition: all 0.2s ease;
+  }
+
+  .task:hover {
+    border-color: var(--line-glow);
+  }
+
+  .task.done {
+    opacity: .45;
+  }
+
+  .task.done .t-title {
+    text-decoration: line-through;
+  }
+
+  .check {
+    width: 20px;
+    height: 20px;
+    border-radius: 6px;
+    border: 1px solid var(--cyan-dim);
+    cursor: pointer;
+    flex: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    color: var(--cyan);
+    transition: all 0.2s ease;
+  }
+
+  .task.done .check {
+    background: var(--cyan);
+    color: #052229;
+  }
+
+  .t-title { font-weight: 500; font-size: 13.5px; }
+  .t-meta { font-size: 11px; color: var(--dim); margin-top: 2px; }
+
+  .t-right {
+    margin-left: auto;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .pri {
+    font-size: 10px;
+    font-weight: 600;
+    padding: 2px 7px;
+    border-radius: 6px;
+    border: 1px solid var(--line);
+    color: var(--dim);
+  }
+
+  .pri.high { color: var(--danger); border-color: rgba(255, 107, 107, .4); background: rgba(255,107,107,.1); }
+  .pri.med { color: var(--gold); border-color: rgba(255, 180, 84, .4); background: rgba(255,180,84,.1); }
+
+  .use-btn {
+    font-size: 11px;
+    color: var(--dim);
+    background: rgba(255,255,255,0.05);
+    border: 1px solid var(--line);
+    padding: 3px 8px;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+
+  .use-btn:hover {
+    color: var(--cyan);
+    border-color: var(--cyan);
+  }
+
+  .del {
+    background: none;
+    border: none;
+    color: var(--dim);
+    cursor: pointer;
+    font-size: 14px;
+    padding: 2px 4px;
+  }
+
+  .del:hover { color: var(--danger); }
+  .empty { color: var(--dim); font-size: 13px; text-align: center; padding: 18px 0; }
+
+  /* Stats */
+  .stat-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+    gap: 14px;
+  }
+
+  .stat { text-align: left; }
+  .stat .v { font-family: 'Space Grotesk'; font-size: 22px; font-weight: 700; color: var(--cyan); }
+  .stat .l { font-size: 11px; color: var(--dim); letter-spacing: .06em; text-transform: uppercase; margin-top: 2px; }
+
+  .bar { height: 6px; background: var(--bg2); border-radius: 4px; overflow: hidden; margin-top: 14px; }
+  .bar i { display: block; height: 100%; background: linear-gradient(90deg, var(--cyan), var(--gold)); border-radius: 4px; transition: width .5s ease; }
+
+  footer {
+    color: var(--dim);
+    font-size: 11.5px;
+    text-align: center;
+    max-width: 540px;
+    line-height: 1.6;
+    margin-top: 10px;
+  }
+
+  footer b { color: var(--cyan); }
+
+  /* Modals */
+  .modal-bg {
+    position: fixed; inset: 0;
+    background: rgba(3, 8, 14, .78);
+    backdrop-filter: blur(10px);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 20;
+    padding: 20px;
+  }
+
+  .modal-bg.show { display: flex; }
+
+  .modal {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 24px;
+    max-width: 360px;
+    width: 100%;
+    box-shadow: 0 12px 36px rgba(0,0,0,0.7);
+  }
+
+  .modal h3 { margin: 0 0 14px; font-size: 16px; color: var(--cyan); }
+  .modal label { font-size: 12px; color: var(--dim); display: block; margin: 12px 0 4px; }
+  .modal input { width: 100%; background: var(--bg2); border: 1px solid var(--line); color: var(--text); border-radius: 8px; padding: 9px 10px; font-size: 13px; font-family: inherit; }
+  .modal .row { display: flex; gap: 8px; margin-top: 18px; }
+
+  .preset-shortcut-chips {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    margin-top: 10px;
+  }
+</style>
+</head>
+<body>
+
+<div class="grid-overlay"></div>
+
+<div class="wrap">
+  <div class="top">
+    <div class="brand">
+      J.A.R.V.I.S <b>· Study HUD</b>
+      <span class="notch-dock-badge">DYNAMIC NOTCH ACTIVE</span>
+    </div>
+    <div class="top-actions">
+      <button class="icon-btn" id="minimizeBtn" title="Dock to Top Notch">⤢</button>
+      <button class="icon-btn" id="settingsBtn" title="Settings">⚙</button>
+    </div>
+  </div>
+
+  <div class="companion">
+    <div class="orb-wrap">
+      <div class="ring"></div>
+      <div class="ring2"></div>
+      <div id="orb"><div class="eyes"><div class="eye"></div><div class="eye"></div></div></div>
+    </div>
+    <div class="say" id="say"><b>Good evening, Aditya.</b> 0 tasks left today.</div>
+  </div>
+
+  <!-- Mission / Timer -->
+  <div class="panel">
+    <div class="panel-header">
+      <h2>Current Mission</h2>
+      <span class="mode-pill" id="modePill">FOCUS ROUND</span>
+    </div>
+    <div id="missionName" class="mission-name">No task selected</div>
+    <div id="missionSub" class="mission-sub">Pick a task below, or start a plain session.</div>
+
+    <div class="timer-row">
+      <div class="timer-ring">
+        <svg viewBox="0 0 100 100">
+          <circle class="t-track" cx="50" cy="50" r="42"></circle>
+          <circle class="t-prog" id="tProg" cx="50" cy="50" r="42" stroke-dasharray="264" style="stroke-dashoffset: 264;"></circle>
+        </svg>
+        <div class="timer-time" id="tTime">25:00</div>
+      </div>
+      <div class="timer-actions">
+        <div class="presets" id="presets"></div>
+        <div style="display:flex;gap:8px;">
+          <button class="btn btn-main" id="startBtn">Start Focus</button>
+          <button class="btn btn-ghost" id="pauseBtn" disabled>Pause</button>
+          <button class="btn btn-ghost" id="stopBtn" disabled>Stop</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Tasks -->
+  <div class="panel">
+    <h2>Today's Tasks</h2>
+    <div class="task-add">
+      <input name="title" placeholder="Task, e.g. Quantum Mechanics — Assignment 3">
+      <input name="mins" type="number" placeholder="min" value="45">
+      <select name="pri">
+        <option value="low">Low</option>
+        <option value="med" selected>Med</option>
+        <option value="high">High</option>
+      </select>
+      <button class="btn btn-main" id="addTask">Add</button>
+    </div>
+    <div class="task-list" id="taskList">
+      <div class="empty">No tasks yet — add your first one above.</div>
+    </div>
+  </div>
+
+  <!-- Stats -->
+  <div class="panel">
+    <h2>Today's Performance</h2>
+    <div class="stat-grid">
+      <div class="stat"><div class="v" id="statFocused">0m</div><div class="l">Focused</div></div>
+      <div class="stat"><div class="v" id="statDone">0/0</div><div class="l">Tasks done</div></div>
+      <div class="stat"><div class="v" id="statSessions">0</div><div class="l">Sessions</div></div>
+      <div class="stat"><div class="v" id="statStreak">0</div><div class="l">Day streak</div></div>
+    </div>
+    <div class="bar"><i id="statBar" style="width:0%"></i></div>
+  </div>
+
+  <footer>
+    JARVIS Companion is active. Live timer and missions are accurately tracked with high-precision timestamp delta synchronization.
+  </footer>
+</div>
+
+<!-- Custom Pomodoro Modal -->
+<div class="modal-bg" id="customModalBg">
+  <div class="modal">
+    <h3>Set Custom Focus Duration</h3>
+    <label>Focus Duration (Minutes)</label>
+    <input id="customMinInput" type="number" min="1" max="360" value="45" placeholder="e.g. 45">
+    <label>Break Duration (Minutes)</label>
+    <input id="customBreakInput" type="number" min="1" max="60" value="5" placeholder="e.g. 5">
+    <div class="preset-shortcut-chips">
+      <div class="chip" data-focus="15" data-break="3">15/3</div>
+      <div class="chip" data-focus="30" data-break="5">30/5</div>
+      <div class="chip" data-focus="45" data-break="10">45/10</div>
+      <div class="chip" data-focus="90" data-break="15">90/15</div>
+    </div>
+    <div class="row">
+      <button class="btn btn-ghost" id="cancelCustom" style="flex:1">Cancel</button>
+      <button class="btn btn-main" id="applyCustom" style="flex:1">Set Time</button>
+    </div>
+  </div>
+</div>
+
+<!-- Settings Modal -->
+<div class="modal-bg" id="modalBg">
+  <div class="modal">
+    <h3>Settings</h3>
+    <label>Your name</label>
+    <input id="setName" placeholder="Aditya">
+    <label>Daily focus target (minutes)</label>
+    <input id="setTarget" type="number">
+    <div class="row">
+      <button class="btn btn-ghost" id="closeSettings" style="flex:1">Close</button>
+      <button class="btn btn-main" id="resetData" style="flex:1;background:var(--danger);color:#fff;">Reset Data</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  const LS_KEY = 'jarvis_trial_v1';
+  const today = () => new Date().toISOString().slice(0, 10);
+
+  function loadState(){
+    try {
+      const raw = localStorage.getItem(LS_KEY);
+      if (raw) return JSON.parse(raw);
+    } catch(e){}
+    return { name: 'Aditya', target: 300, days: {}, tasksByDay: {}, streak: 0 };
+  }
+
+  function saveState(alertEvent = null){
+    try {
+      localStorage.setItem(LS_KEY, JSON.stringify(state));
+      if (window.jarvis && window.jarvis.syncState) {
+        window.jarvis.syncState({
+          state,
+          alert: alertEvent,
+          timer: { running, paused, remaining, total, presetFocusMins, presetBreakMins, mode, activeTaskId }
+        });
+      }
+    } catch(e){}
+  }
+
+  let state = loadState();
+  if (!state.tasksByDay) state.tasksByDay = {};
+  if (!state.days) state.days = {};
+  const day = today();
+  if (!state.tasksByDay[day]) state.tasksByDay[day] = [];
+  if (!state.days[day]) state.days[day] = { focused: 0, sessions: 0 };
+
+  function recomputeStreak(){
+    let s = 0, d = new Date();
+    while (true) {
+      const key = d.toISOString().slice(0, 10);
+      const rec = state.days[key];
+      if (rec && rec.focused > 0) {
+        s++;
+        d.setDate(d.getDate() - 1);
+      } else break;
+    }
+    state.streak = s;
+  }
+
+  const $ = id => document.getElementById(id);
+  const orb = $('orb'), say = $('say');
+  const missionName = $('missionName'), missionSub = $('missionSub');
+  const tTime = $('tTime'), tProg = $('tProg');
+  const startBtn = $('startBtn'), pauseBtn = $('pauseBtn'), stopBtn = $('stopBtn');
+  const presetsEl = $('presets');
+  const taskList = $('taskList');
+  const minimizeBtn = $('minimizeBtn');
+  const modePill = $('modePill');
+  const customModalBg = $('customModalBg');
+  const customMinInput = $('customMinInput');
+  const customBreakInput = $('customBreakInput');
+  const applyCustom = $('applyCustom');
+  const cancelCustom = $('cancelCustom');
+
+  const CIRC = 264;
+  tProg.style.strokeDashoffset = CIRC;
+
+  const PRESETS = [ [25, 5, '25/5'], [50, 10, '50/10'], [60, 10, '60/10'] ];
+  let presetFocusMins = 25;
+  let presetBreakMins = 5;
+  let customFocusMins = null;
+  let customBreakMinsVal = null;
+  let mode = 'focus'; // 'focus' | 'break'
+
+  function renderPresets() {
+    presetsEl.innerHTML = '';
+    PRESETS.forEach(([fM, bM, label]) => {
+      const c = document.createElement('div');
+      c.className = 'chip' + (presetFocusMins === fM && customFocusMins === null ? ' active' : '');
+      c.textContent = label;
+      c.onclick = () => {
+        if (running) return;
+        presetFocusMins = fM;
+        presetBreakMins = bM;
+        customFocusMins = null;
+        customBreakMinsVal = null;
+        mode = 'focus';
+        renderPresets();
+        resetTimer();
+        saveState();
+      };
+      presetsEl.appendChild(c);
+    });
+
+    const customChip = document.createElement('div');
+    customChip.className = 'chip' + (customFocusMins !== null ? ' active' : '');
+    customChip.textContent = customFocusMins ? `Custom (${customFocusMins}/${presetBreakMins}m)` : 'Custom';
+    customChip.onclick = () => {
+      if (running) return;
+      customMinInput.value = customFocusMins || presetFocusMins || 45;
+      customBreakInput.value = customBreakMinsVal || presetBreakMins || 5;
+      customModalBg.classList.add('show');
+    };
+    presetsEl.appendChild(customChip);
+  }
+  renderPresets();
+
+  // Custom Modal Handlers
+  document.querySelectorAll('[data-focus]').forEach(chip => {
+    chip.onclick = () => {
+      customMinInput.value = chip.dataset.focus;
+      customBreakInput.value = chip.dataset.break;
+    };
+  });
+
+  applyCustom.onclick = () => {
+    const fVal = parseInt(customMinInput.value);
+    const bVal = parseInt(customBreakInput.value) || 5;
+    if (fVal > 0 && fVal <= 360) {
+      customFocusMins = fVal;
+      customBreakMinsVal = bVal;
+      presetFocusMins = fVal;
+      presetBreakMins = bVal;
+      mode = 'focus';
+      renderPresets();
+      resetTimer();
+      saveState();
+      customModalBg.classList.remove('show');
+    }
+  };
+
+  cancelCustom.onclick = () => {
+    customModalBg.classList.remove('show');
+  };
+
+  customModalBg.onclick = (e) => {
+    if (e.target === customModalBg) customModalBg.classList.remove('show');
+  };
+
+  // High-Precision Delta Timer Variables
+  let running = false;
+  let paused = false;
+  let remaining = presetFocusMins * 60;
+  let total = remaining;
+  let timerHandle = null;
+  let targetEndTime = 0;
+  let activeTaskId = null;
+  let lastTickTimestamp = 0;
+  let said25 = false;
+  let said75 = false;
+
+  function fmt(s){
+    const m = Math.floor(s / 60), sec = s % 60;
+    return String(m).padStart(2, '0') + ':' + String(sec).padStart(2, '0');
+  }
+
+  function updateModeUI() {
+    if (mode === 'break') {
+      modePill.textContent = `BREAK TIME (${presetBreakMins} MIN)`;
+      modePill.className = 'mode-pill break';
+      tProg.className = 't-prog break';
+      tTime.className = 'timer-time break';
+      startBtn.className = 'btn btn-main break';
+      startBtn.textContent = 'Start Break';
+      orb.className = 'break';
+    } else {
+      modePill.textContent = 'FOCUS ROUND';
+      modePill.className = 'mode-pill';
+      tProg.className = 't-prog';
+      tTime.className = 'timer-time';
+      startBtn.className = 'btn btn-main';
+      startBtn.textContent = 'Start Focus';
+      if (running) orb.className = 'focus';
+      else orb.className = '';
+    }
+  }
+
+  function resetTimer(){
+    const currentMins = mode === 'break' ? presetBreakMins : presetFocusMins;
+    remaining = currentMins * 60;
+    total = remaining;
+    tTime.textContent = fmt(remaining);
+    tProg.style.strokeDashoffset = CIRC;
+    updateModeUI();
+  }
+  resetTimer();
+
+  const LINES = {
+    idle: ["Standing by. Ready when you are.", "Give me a task and I'll start the clock.", "No pressure. Just say when."],
+    start: ["Focus session initiated.", "Locked in. I'll keep quiet.", "Session running. Go."],
+    breakStart: ["Focus session complete! Take your 5-minute break.", "Nice work. Relax and recharge."],
+    breakEnd: ["Break finished. Ready for the next focus round.", "Time to lock in again."],
+    tick25: ["You're a quarter of the way in. Steady.", "Good pace. Keep going."],
+    tick75: ["Almost there. Don't slow down now."],
+    done: ["Session complete. Nice work.", "Task closer to done. Take the break you earned."],
+    paused: ["Paused. Whenever you're ready."],
+    stopped: ["Session stopped early. That's fine — restart when you can."],
+  };
+
+  function speak(arr){ say.innerHTML = arr[Math.floor(Math.random() * arr.length)]; }
+
+  function greet(){
+    const h = new Date().getHours();
+    const name = state.name ? state.name : 'Aditya';
+    const g = h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : 'Good evening';
+    const remainingTasks = state.tasksByDay[day].filter(t => !t.done).length;
+    say.innerHTML = `<b>${g}${name ? ', ' + name : ''}.</b> ${remainingTasks} tasks left today.`;
+  }
+
+  function setOrbState(s){
+    orb.classList.remove('sleep', 'focus', 'break');
+    if (s === 'focus') orb.classList.add('focus');
+    if (s === 'break') orb.classList.add('break');
+    if (s === 'sleep') orb.classList.add('sleep');
+  }
+
+  function renderTasks(){
+    const list = state.tasksByDay[day];
+    taskList.innerHTML = '';
+    if (!list.length) {
+      taskList.innerHTML = '<div class="empty">No tasks yet — add your first one above.</div>';
+    }
+    list.forEach(t => {
+      const el = document.createElement('div');
+      el.className = 'task' + (t.done ? ' done' : '');
+      el.innerHTML = `
+        <div class="check">${t.done ? '✓' : ''}</div>
+        <div>
+          <div class="t-title">${t.title}</div>
+          <div class="t-meta">${t.mins} min</div>
+        </div>
+        <div class="t-right">
+          <span class="pri ${t.pri}">${t.pri.toUpperCase()}</span>
+          ${!t.done ? '<button class="use-btn">Use</button>' : ''}
+          <button class="del">✕</button>
+        </div>`;
+      
+      el.querySelector('.check').onclick = () => {
+        t.done = !t.done;
+        if (t.done && activeTaskId === t.id) {
+          stopSession(false);
+        }
+        saveState();
+        renderTasks();
+        renderStats();
+      };
+
+      el.querySelector('.del').onclick = () => {
+        state.tasksByDay[day] = list.filter(x => x.id !== t.id);
+        if (activeTaskId === t.id) activeTaskId = null;
+        saveState();
+        renderTasks();
+      };
+
+      const useBtn = el.querySelector('.use-btn');
+      if (useBtn) {
+        useBtn.onclick = () => {
+          activeTaskId = t.id;
+          presetFocusMins = t.mins <= 180 ? t.mins : 60;
+          presetBreakMins = 5;
+          customFocusMins = t.mins;
+          mode = 'focus';
+          renderPresets();
+          if (!running) resetTimer();
+          missionName.textContent = t.title;
+          missionSub.textContent = `${t.mins} min planned · ${t.pri} priority`;
+          saveState();
+        };
+      }
+      taskList.appendChild(el);
+    });
+    renderStats();
+  }
+
+  $('addTask').onclick = () => {
+    const form = document.querySelector('.task-add');
+    const title = form.querySelector('[name=title]').value.trim();
+    const mins = parseInt(form.querySelector('[name=mins]').value) || 30;
+    const pri = form.querySelector('[name=pri]').value;
+    if (!title) return;
+    state.tasksByDay[day].push({ id: Date.now(), title, mins, pri, done: false });
+    form.querySelector('[name=title]').value = '';
+    saveState();
+    renderTasks();
+  };
+
+  function renderStats(){
+    const rec = state.days[day];
+    const list = state.tasksByDay[day];
+    $('statFocused').textContent = rec.focused >= 60 ? (Math.floor(rec.focused / 60) + 'h ' + Math.round(rec.focused % 60) + 'm') : Math.round(rec.focused) + 'm';
+    $('statDone').textContent = list.filter(t => t.done).length + '/' + list.length;
+    $('statSessions').textContent = rec.sessions;
+    recomputeStreak();
+    $('statStreak').textContent = state.streak;
+    const pct = Math.min(100, Math.round(rec.focused / (state.target || 300) * 100));
+    $('statBar').style.width = pct + '%';
+  }
+
+  // Precision Delta Timer Tick
+  function tick(){
+    if (!running || paused) return;
+    const now = Date.now();
+    const secsLeft = Math.max(0, Math.round((targetEndTime - now) / 1000));
+    
+    if (secsLeft !== remaining) {
+      const deltaElapsedSecs = Math.max(0, (now - lastTickTimestamp) / 1000);
+      lastTickTimestamp = now;
+      remaining = secsLeft;
+      tTime.textContent = fmt(remaining);
+      tProg.style.strokeDashoffset = CIRC - (CIRC * (total - remaining) / total);
+
+      // Track study minutes only during focus mode
+      if (mode === 'focus' && deltaElapsedSecs > 0 && deltaElapsedSecs < 60) {
+        state.days[day].focused += deltaElapsedSecs / 60;
+      }
+
+      const pctDone = total > 0 ? (total - remaining) / total : 0;
+      if (mode === 'focus') {
+        if (Math.abs(pctDone - 0.25) < 0.02 && !said25) { said25 = true; speak(LINES.tick25); }
+        if (Math.abs(pctDone - 0.75) < 0.02 && !said75) { said75 = true; speak(LINES.tick75); }
+      }
+
+      if (remaining <= 0) {
+        finishSession();
+        return;
+      }
+
+      saveState();
+      renderStats();
+    }
+  }
+
+  function startSession(){
+    running = true;
+    paused = false;
+    said25 = false;
+    said75 = false;
+    targetEndTime = Date.now() + remaining * 1000;
+    lastTickTimestamp = Date.now();
+    
+    if (mode === 'break') {
+      setOrbState('break');
+      speak(LINES.breakStart);
+    } else {
+      setOrbState('focus');
+      speak(LINES.start);
+    }
+
+    startBtn.disabled = true;
+    pauseBtn.disabled = false;
+    stopBtn.disabled = false;
+    pauseBtn.textContent = 'Pause';
+    presetsEl.querySelectorAll('.chip').forEach(c => c.style.pointerEvents = 'none');
+    
+    clearInterval(timerHandle);
+    timerHandle = setInterval(tick, 200);
+    saveState();
+  }
+
+  function pauseSession(){
+    if (!running) return;
+    paused = !paused;
+    if (paused) {
+      clearInterval(timerHandle);
+      remaining = Math.max(0, Math.round((targetEndTime - Date.now()) / 1000));
+      pauseBtn.textContent = 'Resume';
+      speak(LINES.paused);
+    } else {
+      targetEndTime = Date.now() + remaining * 1000;
+      lastTickTimestamp = Date.now();
+      pauseBtn.textContent = 'Pause';
+      timerHandle = setInterval(tick, 200);
+      if (mode === 'break') speak(LINES.breakStart);
+      else speak(LINES.start);
+    }
+    saveState();
+  }
+
+  function stopSession(early = true){
+    running = false;
+    paused = false;
+    clearInterval(timerHandle);
+    setOrbState('idle');
+    startBtn.disabled = false;
+    pauseBtn.disabled = true;
+    stopBtn.disabled = true;
+    pauseBtn.textContent = 'Pause';
+    presetsEl.querySelectorAll('.chip').forEach(c => c.style.pointerEvents = 'auto');
+    if (early) {
+      speak(LINES.stopped);
+      mode = 'focus';
+      resetTimer();
+    }
+    state.days[day].focused = Math.round(state.days[day].focused);
+    saveState();
+    renderStats();
+  }
+
+  function finishSession(){
+    clearInterval(timerHandle);
+
+    if (mode === 'focus') {
+      // Focus round finished -> Transition to Break
+      state.days[day].sessions += 1;
+      state.days[day].focused = Math.round(state.days[day].focused);
+      if (activeTaskId) {
+        const t = state.tasksByDay[day].find(x => x.id === activeTaskId);
+        if (t) t.done = true;
+        activeTaskId = null;
+      }
+      
+      mode = 'break';
+      running = true;
+      paused = false;
+      remaining = presetBreakMins * 60;
+      total = remaining;
+      targetEndTime = Date.now() + remaining * 1000;
+      lastTickTimestamp = Date.now();
+      
+      setOrbState('break');
+      updateModeUI();
+      speak(LINES.breakStart);
+      
+      startBtn.disabled = true;
+      pauseBtn.disabled = false;
+      stopBtn.disabled = false;
+      pauseBtn.textContent = 'Pause';
+      
+      saveState('focus-ended');
+      renderTasks();
+      renderStats();
+      
+      timerHandle = setInterval(tick, 200);
+    } else {
+      // Break finished -> Transition to Focus
+      mode = 'focus';
+      running = false;
+      paused = false;
+      remaining = presetFocusMins * 60;
+      total = remaining;
+      
+      setOrbState('idle');
+      updateModeUI();
+      speak(LINES.breakEnd);
+      
+      startBtn.disabled = false;
+      pauseBtn.disabled = true;
+      stopBtn.disabled = true;
+      presetsEl.querySelectorAll('.chip').forEach(c => c.style.pointerEvents = 'auto');
+      
+      saveState('break-ended');
+      resetTimer();
+      renderStats();
+    }
+  }
+
+  startBtn.onclick = startSession;
+  pauseBtn.onclick = pauseSession;
+  stopBtn.onclick = () => stopSession(true);
+
+  if (minimizeBtn) {
+    minimizeBtn.onclick = () => {
+      if (window.jarvis && window.jarvis.hideProductivity) {
+        window.jarvis.hideProductivity();
+      }
+    };
+  }
+
+  // settings modal
+  $('settingsBtn').onclick = () => {
+    $('setName').value = state.name || 'Aditya';
+    $('setTarget').value = state.target || 300;
+    $('modalBg').classList.add('show');
+  };
+
+  $('closeSettings').onclick = () => {
+    state.name = $('setName').value.trim() || 'Aditya';
+    state.target = parseInt($('setTarget').value) || 300;
+    saveState();
+    $('modalBg').classList.remove('show');
+    greet();
+    renderStats();
+  };
+
+  $('resetData').onclick = () => {
+    if (confirm('This clears all tasks, stats and settings on this device. Continue?')) {
+      localStorage.removeItem(LS_KEY);
+      location.reload();
+    }
+  };
+
+  // State synchronization with Notch
+  if (window.jarvis && window.jarvis.onStateUpdated) {
+    window.jarvis.onStateUpdated((data) => {
+      if (data && data.state) {
+        state = data.state;
+        renderTasks();
+        renderStats();
+      }
+      if (data && data.timer) {
+        if (typeof data.timer.remaining === 'number') remaining = data.timer.remaining;
+        if (typeof data.timer.total === 'number') total = data.timer.total;
+        if (typeof data.timer.presetFocusMins === 'number') presetFocusMins = data.timer.presetFocusMins;
+        if (typeof data.timer.presetBreakMins === 'number') presetBreakMins = data.timer.presetBreakMins;
+        if (data.timer.mode) {
+          mode = data.timer.mode;
+          updateModeUI();
+        }
+        
+        tTime.textContent = fmt(remaining);
+        tProg.style.strokeDashoffset = CIRC - (CIRC * (total - remaining) / total);
+
+        if (typeof data.timer.running === 'boolean') {
+          if (data.timer.running !== running) {
+            running = data.timer.running;
+            if (running) {
+              paused = false;
+              targetEndTime = Date.now() + remaining * 1000;
+              lastTickTimestamp = Date.now();
+              if (mode === 'break') setOrbState('break');
+              else setOrbState('focus');
+              startBtn.disabled = true; pauseBtn.disabled = false; stopBtn.disabled = false;
+              clearInterval(timerHandle);
+              timerHandle = setInterval(tick, 200);
+            } else {
+              setOrbState('idle');
+              startBtn.disabled = false; pauseBtn.disabled = true; stopBtn.disabled = true;
+              clearInterval(timerHandle);
+            }
+          }
+        }
+
+        if (typeof data.timer.paused === 'boolean') {
+          paused = data.timer.paused;
+          pauseBtn.textContent = paused ? 'Resume' : 'Pause';
+          if (paused) clearInterval(timerHandle);
+        }
+
+        if (data.timer.activeTaskId !== undefined) {
+          activeTaskId = data.timer.activeTaskId;
+          const t = state.tasksByDay[day]?.find(x => x.id === activeTaskId);
+          if (t) {
+            missionName.textContent = t.title;
+            missionSub.textContent = `${t.mins} min planned · ${t.pri} priority`;
+          }
+        }
+      }
+    });
+  }
+
+  // init
+  greet();
+  renderTasks();
+  renderStats();
+})();
+</script>
+</body>
+</html>

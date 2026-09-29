@@ -1,0 +1,14 @@
+{
+  "name": "jarvis-study-companion",
+  "version": "1.0.0",
+  "description": "JARVIS Study Companion desktop app",
+  "main": "main.js",
+  "author": "Aditya",
+  "license": "MIT",
+  "scripts": {
+    "start": "electron ."
+  },
+  "devDependencies": {
+    "electron": "^38.1.2"
+  }
+}

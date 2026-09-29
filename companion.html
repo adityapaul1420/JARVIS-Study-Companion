@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=92, height=24, initial-scale=1.0">
+<title>JARVIS</title>
+<style>
+  :root {
+    --notch-bg: #03060a;
+    --line: rgba(255, 255, 255, 0.08);
+    --line-active: rgba(95, 214, 230, 0.3);
+    --cyan: #5fd6e6;
+    --cyan-glow: rgba(95, 214, 230, 0.4);
+    --gold: #ffb454;
+    --gold-glow: rgba(255, 180, 84, 0.45);
+    --good: #7ee8a0;
+    --good-glow: rgba(126, 232, 160, 0.55);
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  html, body {
+    width: 92px;
+    height: 24px;
+    overflow: hidden;
+    background: transparent;
+    user-select: none;
+  }
+
+  /* Ultra-Clean Minimalist Notch */
+  .notch {
+    width: 92px;
+    height: 24px;
+    background: var(--notch-bg);
+    border: 1px solid var(--line);
+    border-top: none;
+    border-radius: 0 0 12px 12px;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.65);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    position: relative;
+    transition: border-color 0.3s ease, box-shadow 0.3s ease;
+    -webkit-app-region: no-drag;
+  }
+
+  .notch:hover {
+    border-color: var(--line-active);
+    box-shadow: 0 5px 16px rgba(0, 0, 0, 0.75), 0 0 10px rgba(95, 214, 230, 0.12);
+  }
+
+  /* Eyes Container */
+  .eyes {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    width: 100%;
+    height: 100%;
+  }
+
+  /* Companion Eye */
+  .eye {
+    width: 5.5px;
+    height: 11px;
+    background: radial-gradient(circle at 35% 35%, #e6fcff, var(--cyan) 50%, #0d5863 100%);
+    border-radius: 3px;
+    box-shadow: 0 0 5px var(--cyan-glow);
+    position: relative;
+    transition: transform 0.2s cubic-bezier(0.2, 0.8, 0.2, 1),
+                height 0.25s ease,
+                background 0.35s ease,
+                box-shadow 0.35s ease,
+                border-radius 0.25s ease;
+    will-change: transform;
+  }
+
+  /* Pupil Highlight */
+  .eye::after {
+    content: '';
+    position: absolute;
+    top: 2px;
+    left: 1.5px;
+    width: 1.5px;
+    height: 3px;
+    background: rgba(255, 255, 255, 0.95);
+    border-radius: 1px;
+    pointer-events: none;
+  }
+
+  /* =========================================
+     EXPRESSIONS & POMODORO INDICATIONS
+     ========================================= */
+
+  /* Soft Natural Blink (Every 45 seconds) */
+  .blinking .eye {
+    transform: scaleY(0.08) !important;
+  }
+
+  /* 1. Focus Mode: Serene, Focused Electric Cyan Glow */
+  .is-focus .eye {
+    height: 9.5px;
+    background: radial-gradient(circle at 35% 35%, #ffffff, #6aeaff 50%, #009cb8 100%);
+    box-shadow: 0 0 9px var(--cyan);
+  }
+
+  /* 2. Break Mode: Soothing Emerald Green Glow (^‿^) */
+  .is-break .eye {
+    height: 5px;
+    border-radius: 3px 3px 1px 1px;
+    background: radial-gradient(circle at 35% 35%, #f0fff4, var(--good) 50%, #156635 100%);
+    box-shadow: 0 0 10px var(--good-glow);
+  }
+  .is-break .eye::after {
+    display: none;
+  }
+  .notch.is-break {
+    border-color: rgba(126, 232, 160, 0.35);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.7), 0 0 12px rgba(126, 232, 160, 0.2);
+  }
+
+  /* 3. Session Transition Alert Pulse */
+  .is-alert {
+    animation: alertPulse 1.4s ease-in-out 3;
+  }
+
+  @keyframes alertPulse {
+    0%, 100% {
+      transform: scale(1);
+    }
+    50% {
+      transform: scale(1.06);
+      box-shadow: 0 0 18px rgba(126, 232, 160, 0.6), 0 6px 20px rgba(0, 0, 0, 0.85);
+    }
+  }
+
+  /* 4. Paused Mode: Warm Amber */
+  .is-paused .eye {
+    background: radial-gradient(circle at 35% 35%, #fff5e6, var(--gold) 50%, #7e4604 100%);
+    box-shadow: 0 0 7px var(--gold-glow);
+  }
+
+  /* 5. Sleep Mode: Gentle Sleepy Slits (- -) */
+  .is-sleeping .eye {
+    height: 2px !important;
+    background: #33444d !important;
+    box-shadow: none !important;
+    border-radius: 1px !important;
+    transform: none !important;
+  }
+  .is-sleeping .eye::after {
+    display: none;
+  }
+
+  /* Hover Glance */
+  .notch:hover:not(.is-sleeping) .eye {
+    transform: scale(1.1);
+  }
+
+  /* Click Wink */
+  .winking .eye:nth-child(1) {
+    transform: scaleY(0.1) !important;
+    height: 2px !important;
+  }
+  .winking .eye:nth-child(2) {
+    transform: scale(1.15) !important;
+  }
+</style>
+</head>
+<body>
+
+<div class="notch" id="notch" title="JARVIS · Click to open Study HUD">
+  <div class="eyes">
+    <div class="eye" id="leftEye"></div>
+    <div class="eye" id="rightEye"></div>
+  </div>
+</div>
+
+<script>
+(function() {
+  const notch = document.getElementById('notch');
+  const leftEye = document.getElementById('leftEye');
+  const rightEye = document.getElementById('rightEye');
+
+  let isFocus = false;
+  let isBreak = false;
+  let isPaused = false;
+  let isSleeping = false;
+  let idleTimer = null;
+  let blinkTimer = null;
+  let saccadeTimer = null;
+  let audioCtx = null;
+
+  // Web Audio Synth for soothing status indications (Zero dependencies)
+  function playAudioAlert(type) {
+    try {
+      if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      if (audioCtx.state === 'suspended') audioCtx.resume();
+
+      const now = audioCtx.currentTime;
+      if (type === 'break-start') {
+        // Soothing 3-note celebration chime (C5 -> E5 -> G5)
+        const notes = [523.25, 659.25, 783.99];
+        notes.forEach((freq, i) => {
+          const osc = audioCtx.createOscillator();
+          const gain = audioCtx.createGain();
+          osc.connect(gain);
+          gain.connect(audioCtx.destination);
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(freq, now + i * 0.12);
+          gain.gain.setValueAtTime(0.08, now + i * 0.12);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + i * 0.12 + 0.35);
+          osc.start(now + i * 0.12);
+          osc.stop(now + i * 0.12 + 0.35);
+        });
+      } else if (type === 'focus-start') {
+        // Gentle power-up chime (A4 -> A5)
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(440, now);
+        osc.frequency.exponentialRampToValueAtTime(880, now + 0.18);
+        gain.gain.setValueAtTime(0.07, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.28);
+        osc.start(now);
+        osc.stop(now + 0.28);
+      }
+    } catch(e) {}
+  }
+
+  // Eye tracking offsets
+  let targetLookX = 0;
+  let targetLookY = 0.4; // Default calm gaze slightly downward at your work
+  let currentLookX = 0;
+  let currentLookY = 0.4;
+
+  // Track cursor smoothly when hovering/moving near notch
+  window.addEventListener('mousemove', (e) => {
+    wakeUp();
+    const rect = notch.getBoundingClientRect();
+    const notchCenterX = rect.left + rect.width / 2;
+    const notchCenterY = rect.top + rect.height / 2;
+
+    const dx = (e.clientX - notchCenterX) / (rect.width / 2);
+    const dy = (e.clientY - notchCenterY) / (rect.height / 2);
+
+    targetLookX = Math.max(-2, Math.min(2, dx * 1.8));
+    targetLookY = Math.max(-1.5, Math.min(2, dy * 1.8));
+  });
+
+  // Very calm, subtle, infrequent look-around
+  function randomLook() {
+    if (isSleeping) return;
+    if (isFocus) {
+      targetLookX = (Math.random() - 0.5) * 0.8;
+      targetLookY = 0.5;
+    } else if (isBreak) {
+      targetLookX = (Math.random() - 0.5) * 1.2;
+      targetLookY = 0.2;
+    } else if (Math.random() < 0.25) {
+      targetLookX = (Math.random() - 0.5) * 1.5;
+      targetLookY = (Math.random() - 0.3) * 1.2;
+    } else {
+      targetLookX = 0;
+      targetLookY = 0.4;
+    }
+  }
+
+  // Smooth animation loop for gentle eye movements
+  function updateEyePosition() {
+    if (!isSleeping) {
+      currentLookX += (targetLookX - currentLookX) * 0.12;
+      currentLookY += (targetLookY - currentLookY) * 0.12;
+
+      leftEye.style.transform = `translate(${currentLookX.toFixed(2)}px, ${currentLookY.toFixed(2)}px)`;
+      rightEye.style.transform = `translate(${currentLookX.toFixed(2)}px, ${currentLookY.toFixed(2)}px)`;
+    }
+    requestAnimationFrame(updateEyePosition);
+  }
+  requestAnimationFrame(updateEyePosition);
+
+  // Serene Blinking (Every 45 seconds)
+  function scheduleBlink() {
+    const nextBlink = 45000;
+    blinkTimer = setTimeout(() => {
+      if (!isSleeping && !notch.classList.contains('winking')) {
+        notch.classList.add('blinking');
+        setTimeout(() => {
+          notch.classList.remove('blinking');
+        }, 140);
+      }
+      scheduleBlink();
+    }, nextBlink);
+  }
+  scheduleBlink();
+
+  saccadeTimer = setInterval(randomLook, 8000);
+
+  // Sleep after 3 min of inactivity
+  function armIdle() {
+    clearTimeout(idleTimer);
+    if (isFocus || isBreak) return;
+    idleTimer = setTimeout(() => {
+      if (!isFocus && !isBreak) {
+        isSleeping = true;
+        notch.classList.add('is-sleeping');
+      }
+    }, 180000);
+  }
+
+  function wakeUp() {
+    if (isSleeping) {
+      isSleeping = false;
+      notch.classList.remove('is-sleeping');
+      notch.classList.add('blinking');
+      setTimeout(() => notch.classList.remove('blinking'), 140);
+    }
+    armIdle();
+  }
+
+  document.addEventListener('mousemove', wakeUp);
+  document.addEventListener('keydown', wakeUp);
+  armIdle();
+
+  // Click: Friendly wink + toggle Study HUD
+  notch.addEventListener('click', () => {
+    wakeUp();
+    notch.classList.add('winking');
+    setTimeout(() => notch.classList.remove('winking'), 300);
+
+    if (window.jarvis && window.jarvis.toggleProductivity) {
+      window.jarvis.toggleProductivity();
+    }
+  });
+
+  // State synchronization from HUD (Receives focus/break alerts & state)
+  if (window.jarvis && window.jarvis.onStateUpdated) {
+    window.jarvis.onStateUpdated((data) => {
+      if (data && data.timer) {
+        const mode = data.timer.mode || 'focus';
+        isFocus = !!data.timer.running && !data.timer.paused && mode === 'focus';
+        isBreak = !!data.timer.running && !data.timer.paused && mode === 'break';
+        isPaused = !!data.timer.paused;
+
+        // Visual State Handling
+        notch.classList.remove('is-focus', 'is-break', 'is-paused', 'is-sleeping');
+
+        if (isBreak) {
+          wakeUp();
+          notch.classList.add('is-break');
+        } else if (isFocus) {
+          wakeUp();
+          notch.classList.add('is-focus');
+        } else if (isPaused) {
+          notch.classList.add('is-paused');
+        }
+
+        // Trigger Alert Animation and Audio
+        if (data.alert === 'focus-ended') {
+          wakeUp();
+          playAudioAlert('break-start');
+          notch.classList.add('is-alert');
+          setTimeout(() => notch.classList.remove('is-alert'), 4200);
+        } else if (data.alert === 'break-ended') {
+          wakeUp();
+          playAudioAlert('focus-start');
+          notch.classList.add('is-alert');
+          setTimeout(() => notch.classList.remove('is-alert'), 4200);
+        }
+      }
+    });
+  }
+})();
+</script>
+</body>
+</html>
