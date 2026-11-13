@@ -28,8 +28,16 @@ set "INSTALL_DIR=%LOCALAPPDATA%\JARVIS-Study-Companion"
 set "ZIP=%TEMP%\JARVIS-Study-Companion-main.zip"
 set "STAGE=%TEMP%\JARVIS-Study-Companion-stage"
 
+set "PS_EXE=%SystemRoot%\System32\WindowsPowerShell\v1.0\powershell.exe"
+if not exist "%PS_EXE%" (
+  echo ERROR: Windows PowerShell was not found at its standard location.
+  echo Check Windows installation or ask your administrator to enable Windows PowerShell.
+  pause
+  exit /b 1
+)
+
 echo Downloading JARVIS...
-powershell -NoProfile -ExecutionPolicy Bypass -Command "$ErrorActionPreference='Stop'; $zip=$env:TEMP+'\JARVIS-Study-Companion-main.zip'; $stage=$env:TEMP+'\JARVIS-Study-Companion-stage'; $dest=$env:LOCALAPPDATA+'\JARVIS-Study-Companion'; try { if(Test-Path $stage){Remove-Item $stage -Recurse -Force}; Invoke-WebRequest 'https://github.com/adityapaul1420/JARVIS-Study-Companion/archive/refs/heads/main.zip' -OutFile $zip; Expand-Archive $zip -DestinationPath $stage -Force; $src=Join-Path $stage 'JARVIS-Study-Companion-main'; if(!(Test-Path (Join-Path $src 'package.json'))){throw 'package.json not found in downloaded project'}; if(Test-Path $dest){Remove-Item $dest -Recurse -Force}; New-Item -ItemType Directory -Path $dest -Force | Out-Null; Copy-Item (Join-Path $src '*') $dest -Recurse -Force; Write-Host 'Project files installed.' -ForegroundColor Green } catch { Write-Error $_; exit 1 } finally { if(Test-Path $zip){Remove-Item $zip -Force}; if(Test-Path $stage){Remove-Item $stage -Recurse -Force} }"
+"%PS_EXE%" -NoProfile -ExecutionPolicy Bypass -Command "$ErrorActionPreference='Stop'; $zip=$env:TEMP+'\JARVIS-Study-Companion-main.zip'; $stage=$env:TEMP+'\JARVIS-Study-Companion-stage'; $dest=$env:LOCALAPPDATA+'\JARVIS-Study-Companion'; try { if(Test-Path $stage){Remove-Item $stage -Recurse -Force}; Invoke-WebRequest 'https://github.com/adityapaul1420/JARVIS-Study-Companion/archive/refs/heads/main.zip' -OutFile $zip; Expand-Archive $zip -DestinationPath $stage -Force; $src=Join-Path $stage 'JARVIS-Study-Companion-main'; if(!(Test-Path (Join-Path $src 'package.json'))){throw 'package.json not found in downloaded project'}; if(Test-Path $dest){Remove-Item $dest -Recurse -Force}; New-Item -ItemType Directory -Path $dest -Force | Out-Null; Copy-Item (Join-Path $src '*') $dest -Recurse -Force; Write-Host 'Project files installed.' -ForegroundColor Green } catch { Write-Error $_; exit 1 } finally { if(Test-Path $zip){Remove-Item $zip -Force}; if(Test-Path $stage){Remove-Item $stage -Recurse -Force} }"
 if errorlevel 1 (
   echo Download or extraction failed.
   pause
