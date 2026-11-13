@@ -10,5 +10,14 @@ contextBridge.exposeInMainWorld('jarvis', {
     const subscription = (_event, data) => callback(data);
     ipcRenderer.on('state-updated', subscription);
     return () => ipcRenderer.removeListener('state-updated', subscription);
-  }
+  },
+  // File Handling & Persistence IPC
+  getDataFileInfo: () => ipcRenderer.invoke('get-data-file-info'),
+  openDataFolder: () => ipcRenderer.invoke('open-data-folder'),
+  openDataFile: () => ipcRenderer.invoke('open-data-file'),
+  saveDataFile: (data) => ipcRenderer.invoke('save-data-file', data),
+  loadDataFile: () => ipcRenderer.invoke('load-data-file'),
+  exportDataDialog: (options) => ipcRenderer.invoke('export-data-dialog', options),
+  importDataDialog: () => ipcRenderer.invoke('import-data-dialog')
 });
+
