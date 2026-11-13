@@ -45,17 +45,44 @@ if errorlevel 1 (
 
 echo.
 echo Installing dependencies. This may take several minutes...
-call npm install --no-audit --no-fund
-if errorlevel 1 (
-  echo.
-  echo Dependency installation failed. Check your internet connection
-  echo and Node.js/npm installation, then run the command again.
-  pause
-  exit /b 1
-)
+set "ATTEMPT=1"
+
+:INSTALL_RETRY
+echo.
+echo Dependency installation attempt %ATTEMPT% of 3...
+call npm install --no-audit --no-fund --foreground-scripts
+if errorlevel 1 goto INSTALL_FAILED
+
+echo Checking that the Electron application binary was downloaded...
+call node -e "const fs=require('fs');const p=require('electron');if(typeof p!=='string'||!fs.existsSync(p)){console.error('Electron executable is missing:',p);process.exit(1)}"
+if not errorlevel 1 goto INSTALL_OK
+
+:INSTALL_FAILED
+if %ATTEMPT% GEQ 3 goto INSTALL_GIVEUP
 
 echo.
-echo Installation complete. Starting JARVIS...
+echo Electron is incomplete. Cleaning its package and npm cache before retrying...
+if exist "node_modules\electron" rmdir /s /q "node_modules\electron"
+call npm cache clean --force
+set /a ATTEMPT+=1
+goto INSTALL_RETRY
+
+:INSTALL_GIVEUP
+echo.
+echo ERROR: Electron could not be installed after 3 attempts.
+echo This often happens when a firewall, antivirus, proxy, or network
+echo blocks Electron's download from GitHub.
+echo.
+echo Check your internet connection and allow GitHub downloads, then
+echo run this installer again. If it still fails, send the full error
+echo shown above to the JARVIS developer.
+pause
+exit /b 1
+
+:INSTALL_OK
+echo.
+echo Dependencies and Electron installed successfully.
+echo Starting JARVIS...
 echo You can launch it again later with:
 echo cd /d "%INSTALL_DIR%" ^&^& npm start
 echo.
