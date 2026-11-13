@@ -46,7 +46,7 @@ git push origin v1.0.0
 
 ## Data and reinstall notes
 
-JARVIS currently stores productivity data in Electron renderer localStorage. The installer replaces the application source directory on reinstall. Back up important user data before reinstalling; a future release should move persistent data to Electron's userData directory before upgrades are advertised as data-safe.
+JARVIS currently stores productivity data in Electron renderer localStorage. Electron keeps this browser-profile data separately from the application source directory, and this installer does not explicitly delete that profile. Nevertheless, back up important data before reinstalling until the reinstall path has been tested on your own Windows machine.
 
 ## Security
 
